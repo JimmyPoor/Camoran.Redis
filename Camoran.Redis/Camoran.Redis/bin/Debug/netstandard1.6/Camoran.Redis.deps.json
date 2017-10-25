@@ -1,12 +1,12 @@
 {
   "runtimeTarget": {
-    "name": ".NETStandard,Version=v2.0/",
+    "name": ".NETStandard,Version=v1.6/",
     "signature": "8ee5d5cd7b126ecf801073be4a1561c67451c16c"
   },
   "compilationOptions": {},
   "targets": {
-    ".NETStandard,Version=v2.0": {},
-    ".NETStandard,Version=v2.0/": {
+    ".NETStandard,Version=v1.6": {},
+    ".NETStandard,Version=v1.6/": {
       "camoran.redis/1.0.0": {
         "dependencies": {
           "NETStandard.Library": "1.6.1",

@@ -8,14 +8,14 @@ namespace Camoran.Redis.Utils
 {
     /// <summary>
     /// RedisBoss class in charge of creating ConnectionMultiplexer object 
-    /// 1 Use singleton pattern to create ConnectionMultiplexer
+    /// 1 Using singleton pattern to create ConnectionMultiplexer
     /// 2 Get IDatabase instance
     /// 3 Bind some events 
     /// </summary>
     public class RedisBoss
     {
         static object _lock = new object();
-        static string _redisConnString = "";
+        static string _redisConnString = "localhost";
         static ConnectionMultiplexer _connectionManger;
         public static ConnectionMultiplexer ConnectionManger
         {
@@ -29,13 +29,18 @@ namespace Camoran.Redis.Utils
                             return _connectionManger;
                     }
 
-                    _connectionManger.ErrorMessage += _connectionManger_ErrorMessage;
                     _connectionManger = ConnectionMultiplexer.Connect(_redisConnString);
+                    _connectionManger.ErrorMessage += _connectionManger_ErrorMessage;
                 }
-
                 return _connectionManger;
             }
         }
+
+        public static void SetConnection(string conn)
+        {
+            _redisConnString = conn;
+        }
+
 
         public static IDatabase GetDB(int db = -1)
         {
@@ -54,7 +59,8 @@ namespace Camoran.Redis.Utils
         {
             if (WhenError == null)
                 Console.WriteLine($"Error:{e.Message}");
-            WhenError(e);
+            else
+                WhenError(e);
         }
     }
 
@@ -86,44 +92,49 @@ namespace Camoran.Redis.Utils
     }
 
 
-    public class RedisKey
+    public class RedisKeys
     {
-        public bool KeyIsExist(string key) => RedisBoss.GetDB().KeyExists(key);
+        private IDatabase _db;
 
-        public void KeyPersist(string key) => RedisBoss.GetDB().KeyPersist(key);
+        public RedisKeys(int db = -1)
+        {
+            _db = RedisBoss.GetDB(db);
+        }
 
-        public bool KeyIsExpire(string key, TimeSpan expire) => RedisBoss.GetDB().KeyExpire(key, expire);
+        public bool Exists(string key) => _db.KeyExists(key);
 
-        public long KeyIncrement(string key) => RedisBoss.GetDB().StringIncrement(key);
+        public void Persist(string key) => _db.KeyPersist(key);
 
-        public byte[] Doump(string key) => RedisBoss.GetDB().KeyDump(key);
+        public bool Expire(string key, TimeSpan expire) => _db.KeyExpire(key, expire);
 
-        public void KeyReName(string key, string newKey) => RedisBoss.GetDB().KeyRename(key, newKey);
+        public long Increment(string key,long val) => _db.StringIncrement("aaa",val);
+
+        public byte[] Doump(string key) => _db.KeyDump(key);
+
+        public void ReName(string key, string newKey) => _db.KeyRename(key, newKey);
+
+        public void Restore(string key, byte[] val, TimeSpan? expiry) => _db.KeyRestore(key, val, expiry);
+
+        public TimeSpan? TTL(string key) => _db.KeyTimeToLive(key);
     }
 
 
     public class RedisString
     {
+        private IDatabase _db;
 
-        public string Get(string key)
+        public RedisString(int db = -1)
         {
-            return RedisBoss.GetDB().StringGet(key);
+            _db = RedisBoss.GetDB(db);
         }
 
-        public string Get(string key, int db)
-        {
-            return RedisBoss.GetDB(db).StringGet(key);
-        }
+        public string Get(string key) => _db.StringGet(key);
 
-        public void Set(string key, string val)
-        {
-            RedisBoss.GetDB().StringSet(key, val);
-        }
+        public string Get(string key, int db) => _db.StringGet(key);
 
-        public void Set(string key, string val, TimeSpan expire)
-        {
-            RedisBoss.GetDB().StringSet(key, val, expire);
-        }
+        public bool Set(string key, string val) => _db.StringSet(key, val);
+
+        public bool Set(string key, string val, TimeSpan expire) => _db.StringSet(key, val, expire);
 
         public void Set<T>(string key, T val)
         {
@@ -142,7 +153,6 @@ namespace Camoran.Redis.Utils
             return JsonConvert.DeserializeObject<T>(valstr);
 
         }
-
 
     }
 
@@ -187,17 +197,17 @@ namespace Camoran.Redis.Utils
     {
         public string Lpop(string key) => RedisBoss.GetDB().ListLeftPop(key);
 
-        public void Lpush(string key, string val) => RedisBoss.GetDB().ListLeftPush(key, val);
+        public long Lpush(string key, string val) => RedisBoss.GetDB().ListLeftPush(key, val);
 
         public string Rpop(string key) => RedisBoss.GetDB().ListRightPop(key);
 
-        public void Rpush(string key, string val) => RedisBoss.GetDB().ListRightPush(key, val);
+        public long Rpush(string key, string val) => RedisBoss.GetDB().ListRightPush(key, val);
 
         public long Llen(string key) => RedisBoss.GetDB().ListLength(key);
 
         public List<string> Lrange(string key, int start, int stop) => RedisBoss.GetDB().ListRange(key, start, stop).ConvertToStringList();
 
-        public void Linsert(string key, string preVal, string val) => RedisBoss.GetDB().ListInsertAfter(key, preVal, val);
+        public long Linsert(string key, string preVal, string val) => RedisBoss.GetDB().ListInsertAfter(key, preVal, val);
 
         public string Lindex(string key, int index) => RedisBoss.GetDB().ListGetByIndex(key, index);
 
@@ -214,13 +224,13 @@ namespace Camoran.Redis.Utils
 
     public class RedisSet
     {
-        public void Sadd(string key, string val) => RedisBoss.GetDB().SetAdd(key, val);
+        public bool Sadd(string key, string val) => RedisBoss.GetDB().SetAdd(key, val);
 
         public long Scard(string key) => RedisBoss.GetDB().SetLength(key);
 
-        public void Spop(string key) => RedisBoss.GetDB().SetPop(key);
+        public string Spop(string key) => RedisBoss.GetDB().SetPop(key);
 
-        public void Smove(string sourceKey, string destKey, string val) => RedisBoss.GetDB().SetMove(sourceKey, destKey, val);
+        public bool Smove(string sourceKey, string destKey, string val) => RedisBoss.GetDB().SetMove(sourceKey, destKey, val);
 
         public bool Srem(string key, string val) => RedisBoss.GetDB().SetRemove(key, val);
 
@@ -237,7 +247,24 @@ namespace Camoran.Redis.Utils
     }
 
 
-    public class RedisSortSet
+    public class RedisSortedSet
     {
+        public bool Zadd(string key, string val, double score) => RedisBoss.GetDB().SortedSetAdd(key, val, score);
+
+        public long Zcount(string key) => RedisBoss.GetDB().SortedSetLength(key);
+
+        public List<string> ZrangeByScore(string key, long start, long end = -1) => RedisBoss.GetDB().SortedSetRangeByScore(key, start, end).ConvertToStringList();
+
+        public List<string> ZrangeByRank(string key, long start, long end) => RedisBoss.GetDB().SortedSetRangeByRank(key, start, end).ConvertToStringList();
+
+        public bool Zrem(string key, string val) => RedisBoss.GetDB().SortedSetRemove(key, val);
+
+        public long ZremRangeByRank(string key, long start, long end) => RedisBoss.GetDB().SortedSetRemoveRangeByRank(key, start, end);
+
+        public long ZremRangeByScore(string key, long start, long end) => RedisBoss.GetDB().SortedSetRemoveRangeByScore(key, start, end);
+
+        public void ZScore(string key, string val) => RedisBoss.GetDB().SortedSetScore(key, val);
+
+        // public void ZScan() => RedisBoss.GetDB().SortedSetScan()
     }
 }

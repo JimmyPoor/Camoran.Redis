@@ -1,0 +1,7 @@
+E:\project\Redis\RedisSource\Camoran.Redis\Camoran.Redis\Camoran.Redis\Camoran.Redis\bin\Debug\netstandard1.6\Camoran.Redis.deps.json
+E:\project\Redis\RedisSource\Camoran.Redis\Camoran.Redis\Camoran.Redis\Camoran.Redis\bin\Debug\netstandard1.6\Camoran.Redis.dll
+E:\project\Redis\RedisSource\Camoran.Redis\Camoran.Redis\Camoran.Redis\Camoran.Redis\bin\Debug\netstandard1.6\Camoran.Redis.pdb
+E:\project\Redis\RedisSource\Camoran.Redis\Camoran.Redis\Camoran.Redis\Camoran.Redis\obj\Debug\netstandard1.6\Camoran.Redis.csprojResolveAssemblyReference.cache
+E:\project\Redis\RedisSource\Camoran.Redis\Camoran.Redis\Camoran.Redis\Camoran.Redis\obj\Debug\netstandard1.6\Camoran.Redis.AssemblyInfo.cs
+E:\project\Redis\RedisSource\Camoran.Redis\Camoran.Redis\Camoran.Redis\Camoran.Redis\obj\Debug\netstandard1.6\Camoran.Redis.dll
+E:\project\Redis\RedisSource\Camoran.Redis\Camoran.Redis\Camoran.Redis\Camoran.Redis\obj\Debug\netstandard1.6\Camoran.Redis.pdb
