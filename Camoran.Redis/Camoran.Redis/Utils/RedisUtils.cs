@@ -107,7 +107,7 @@ namespace Camoran.Redis.Utils
 
         public bool Expire(string key, TimeSpan expire) => _db.KeyExpire(key, expire);
 
-        public long Increment(string key,long val) => _db.StringIncrement("aaa",val);
+        public long Increment(string key,long val) => _db.StringIncrement(key, val);
 
         public byte[] Doump(string key) => _db.KeyDump(key);
 
@@ -116,6 +116,10 @@ namespace Camoran.Redis.Utils
         public void Restore(string key, byte[] val, TimeSpan? expiry) => _db.KeyRestore(key, val, expiry);
 
         public TimeSpan? TTL(string key) => _db.KeyTimeToLive(key);
+
+        public bool Del(string key) => _db.KeyDelete(key);
+
+        public bool SetNx(string key) => _db.KeyExists(key);
     }
 
 
@@ -135,6 +139,8 @@ namespace Camoran.Redis.Utils
         public bool Set(string key, string val) => _db.StringSet(key, val);
 
         public bool Set(string key, string val, TimeSpan expire) => _db.StringSet(key, val, expire);
+
+        public string GetSet(string key, string val) => _db.StringGetSet(key, val);
 
         public void Set<T>(string key, T val)
         {
@@ -159,7 +165,7 @@ namespace Camoran.Redis.Utils
 
     public class RedisHash
     {
-        public void Hset(string hkey, IDictionary<string, string> keyValues)
+        public void Hset(string hkey, Dictionary<string, string> keyValues)
         {
             var entries = new List<HashEntry>();
             foreach (var item in keyValues)
@@ -170,7 +176,7 @@ namespace Camoran.Redis.Utils
 
         public string Hget(string hkey, string key) => RedisBoss.GetDB().HashGet(hkey, key);
 
-        public IDictionary<string, string> HGetAll(string hkey)
+        public Dictionary<string, string> HGetAll(string hkey)
         {
             var dic = new Dictionary<string, string>();
             var entries = RedisBoss.GetDB().HashGetAll(hkey);
@@ -266,5 +272,19 @@ namespace Camoran.Redis.Utils
         public void ZScore(string key, string val) => RedisBoss.GetDB().SortedSetScore(key, val);
 
         // public void ZScan() => RedisBoss.GetDB().SortedSetScan()
+    }
+
+    
+    public class RedisLock
+    {
+        public static bool TryToGetLock()
+        {
+            return true;
+        }
+
+        public static bool TryToSetLock()
+        {
+            return true;
+        }
     }
 }
