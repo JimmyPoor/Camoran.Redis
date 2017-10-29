@@ -107,7 +107,7 @@ namespace Camoran.Redis.Utils
 
         public bool Expire(string key, TimeSpan expire) => _db.KeyExpire(key, expire);
 
-        public long Increment(string key,long val) => _db.StringIncrement(key, val);
+        public long Increment(string key, long val) => _db.StringIncrement(key, val);
 
         public byte[] Doump(string key) => _db.KeyDump(key);
 
@@ -138,16 +138,15 @@ namespace Camoran.Redis.Utils
 
         public bool Set(string key, string val) => _db.StringSet(key, val);
 
-        public bool Set(string key, string val, TimeSpan expire) => _db.StringSet(key, val, expire);
+        public bool Set(string key, string val, TimeSpan? expire) => _db.StringSet(key, val, expire);
 
         public string GetSet(string key, string val) => _db.StringGetSet(key, val);
 
-        public void Set<T>(string key, T val)
-        {
-            var valstr = JsonConvert.SerializeObject(val);
+        public string GetSet<T>(string key, T val) => _db.StringGetSet(key, JsonConvert.SerializeObject(val));
 
-            Set(key, valstr);
-        }
+        public bool Set<T>(string key, T val) => Set(key, val, null);
+
+        public bool Set<T>(string key, T val, TimeSpan? expire) => Set(key, JsonConvert.SerializeObject(val), expire);
 
         public T Get<T>(string key)
         {
@@ -270,21 +269,69 @@ namespace Camoran.Redis.Utils
         public long ZremRangeByScore(string key, long start, long end) => RedisBoss.GetDB().SortedSetRemoveRangeByScore(key, start, end);
 
         public void ZScore(string key, string val) => RedisBoss.GetDB().SortedSetScore(key, val);
-
-        // public void ZScan() => RedisBoss.GetDB().SortedSetScan()
     }
 
-    
+
     public class RedisLock
     {
-        public static bool TryToGetLock()
+        RedisKeys _redisKeys;
+        RedisString _redisString;
+        TimeSpan _lockExpireTime;
+        static RedisKey _lockKey = "lockObj";
+
+        public RedisLock(RedisKeys keys, RedisString redisString, TimeSpan lockExpireTime)
         {
+            _redisKeys = keys;
+            _redisString = redisString;
+            _lockExpireTime = lockExpireTime;
+        }
+
+        public bool TryToGetLock()
+        {
+            if (!_redisKeys.SetNx(_lockKey)) // try to get lock
+            {
+                var timestamp = Convert.ToInt64(_redisString.Get(_lockKey));
+                var currentStamp = ConvertToTimestamp(DateTime.Now);
+
+                if (timestamp <= currentStamp) // lock has been expired
+                {
+                    var oldStamp = Convert.ToInt64(_redisString.GetSet(_lockKey, currentStamp)); // get old timestamp to check whether another thread may get this lock
+                    if (oldStamp == timestamp) // if no another thread got lock then current thread got this lock
+                    {
+                        TryToSetLock();
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             return true;
         }
 
-        public static bool TryToSetLock()
+
+        private bool TryToSetLock()
         {
-            return true;
+            var currentStamp = ConvertToTimestamp(DateTime.Now);
+
+            return _redisString.Set(_lockKey, currentStamp, _lockExpireTime);
         }
+
+
+        private long ConvertToTimestamp(DateTime dt)
+        {
+            var initial = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var ticks = dt.AddHours(-8) - initial;
+
+            return (long)ticks.TotalMilliseconds;
+        }
+
+        private DateTime ConvertToDateTime(long timestamp)
+        {
+            var initial = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            return initial.AddMilliseconds(timestamp).AddDays(8);
+        }
+
     }
 }

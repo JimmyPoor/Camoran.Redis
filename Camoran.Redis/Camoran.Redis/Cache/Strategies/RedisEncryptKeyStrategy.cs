@@ -36,6 +36,7 @@ namespace Camoran.Redis.Cache
             throw new RedisCacheException();
         }
 
+
         public enum EncryptType
         {
             MD5 = 1
@@ -158,9 +159,7 @@ namespace Camoran.Redis.Cache
             if (_entryptType == EncryptType.MD5)
             {
                 var enctryptKey = MD5Encrypt(key);
-
-                _hash.Hset(MD5Encrypt(key), val);
-
+                _hash.Hset(enctryptKey, val);
                 SetExpire(enctryptKey, expireTime);
             }
         }
