@@ -119,7 +119,7 @@ namespace Camoran.Redis.Utils
 
         public bool Del(string key) => _db.KeyDelete(key);
 
-        public bool SetNx(string key) => _db.KeyExists(key);
+        //public bool SetNx(string key,string val) => _db.KeyExists(key);
     }
 
 
@@ -148,6 +148,13 @@ namespace Camoran.Redis.Utils
 
         public bool Set<T>(string key, T val, TimeSpan? expire) => Set(key, JsonConvert.SerializeObject(val), expire);
 
+        public bool SetNx(string key, string val)
+        {
+            if (_db.KeyExists(key)) return false;
+
+            return Set(key, val);
+        }
+
         public T Get<T>(string key)
         {
             var valstr = Get(key);
@@ -164,16 +171,36 @@ namespace Camoran.Redis.Utils
 
     public class RedisHash
     {
+        private IDatabase _db;
+
+        public RedisHash(int db = -1)
+        {
+            _db = RedisBoss.GetDB(db);
+        }
+
         public void Hset(string hkey, Dictionary<string, string> keyValues)
         {
             var entries = new List<HashEntry>();
             foreach (var item in keyValues)
                 entries.Add(new HashEntry(item.Key, item.Value));
 
-            RedisBoss.GetDB().HashSet(hkey, entries.ToArray());
+            _db.HashSet(hkey, entries.ToArray());
         }
 
-        public string Hget(string hkey, string key) => RedisBoss.GetDB().HashGet(hkey, key);
+        public bool Hset<T>(string hkey, string key, T val) => _db.HashSet(hkey, key, JsonConvert.SerializeObject(val));
+
+        public bool Hset(string hkey, string key, string val) => _db.HashSet(hkey, key, val);
+
+        public string Hget(string hkey, string key) => _db.HashGet(hkey, key);
+
+        public T Hget<T>(string hkey, string key)
+        {
+            var val = _db.HashGet(hkey, key);
+            if (!string.IsNullOrEmpty(val))
+                return JsonConvert.DeserializeObject<T>(val);
+
+            return default(T);
+        }
 
         public Dictionary<string, string> HGetAll(string hkey)
         {
@@ -187,13 +214,13 @@ namespace Camoran.Redis.Utils
             return dic;
         }
 
-        public bool HkeyExists(string hkey) => RedisBoss.GetDB().KeyExists(hkey);
+        public bool HkeyExists(string hkey) => _db.KeyExists(hkey);
 
-        public List<string> Hkeys(string hkey) => RedisBoss.GetDB().HashKeys(hkey).ConvertToStringList();
+        public List<string> Hkeys(string hkey) => _db.HashKeys(hkey).ConvertToStringList();
 
-        public long Hlen(string hkey) => RedisBoss.GetDB().HashLength(hkey);
+        public long Hlen(string hkey) => _db.HashLength(hkey);
 
-        public List<string> Hvals(string hkey) => RedisBoss.GetDB().HashValues(hkey).ConvertToStringList();
+        public List<string> Hvals(string hkey) => _db.HashValues(hkey).ConvertToStringList();
 
     }
 
@@ -281,26 +308,25 @@ namespace Camoran.Redis.Utils
 
         public RedisLock(RedisKeys keys, RedisString redisString, TimeSpan lockExpireTime)
         {
+            if (keys == null || redisString == null)
+                throw new ArgumentException("params is not allowed null");
+
             _redisKeys = keys;
             _redisString = redisString;
             _lockExpireTime = lockExpireTime;
         }
 
-        public bool TryToGetLock()
+        public bool GetLock()
         {
-            if (!_redisKeys.SetNx(_lockKey)) // try to get lock
+            var currentStamp = ConvertToTimestamp(DateTime.Now + _lockExpireTime);
+            if (!GetLock(currentStamp)) // try to get lock
             {
                 var timestamp = Convert.ToInt64(_redisString.Get(_lockKey));
-                var currentStamp = ConvertToTimestamp(DateTime.Now);
-
                 if (timestamp <= currentStamp) // lock has been expired
                 {
                     var oldStamp = Convert.ToInt64(_redisString.GetSet(_lockKey, currentStamp)); // get old timestamp to check whether another thread may get this lock
-                    if (oldStamp == timestamp) // if no another thread got lock then current thread got this lock
-                    {
-                        TryToSetLock();
-                        return true;
-                    }
+
+                    return oldStamp == timestamp || oldStamp == 0; // if no another thread got lock then current thread got this lock instead,oldStamp is zero mean  lock key been deleted
                 }
 
                 return false;
@@ -310,15 +336,19 @@ namespace Camoran.Redis.Utils
         }
 
 
-        private bool TryToSetLock()
+        public bool DelLock()
         {
-            var currentStamp = ConvertToTimestamp(DateTime.Now);
-
-            return _redisString.Set(_lockKey, currentStamp, _lockExpireTime);
+            return _redisKeys.Del(_lockKey);
         }
 
 
-        private long ConvertToTimestamp(DateTime dt)
+        protected bool GetLock(long timestamp)
+        {
+            return _redisString.SetNx(_lockKey, timestamp.ToString());
+        }
+
+
+        protected long ConvertToTimestamp(DateTime dt)
         {
             var initial = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var ticks = dt.AddHours(-8) - initial;
@@ -326,7 +356,7 @@ namespace Camoran.Redis.Utils
             return (long)ticks.TotalMilliseconds;
         }
 
-        private DateTime ConvertToDateTime(long timestamp)
+        protected DateTime ConvertToDateTime(long timestamp)
         {
             var initial = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
