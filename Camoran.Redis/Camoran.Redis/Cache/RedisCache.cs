@@ -23,22 +23,22 @@ namespace Camoran.Redis.Cache
             this._strategy = strategy ?? throw new RedisCacheException(ErrorInfo.STRATEGY_NOT_ALLOWED_NULL);
         }
 
-        public Value Get(Key key)
+        public virtual Value Get(Key key)
         {
             return _strategy.Get(key);
         }
 
-        public bool Remove(Key key)
+        public virtual bool Remove(Key key)
         {
             return _strategy.Remove(key);
         }
 
-        public void Set(Key key, Value val, TimeSpan expireTime)
+        public virtual void Set(Key key, Value val, TimeSpan expireTime)
         {
             _strategy.Set(key,val,expireTime);
         }
 
-        public void SetExpire(Key key, TimeSpan expireTime)
+        public virtual void SetExpire(Key key, TimeSpan expireTime)
         {
             _strategy.SetExpire(key, expireTime);
         }

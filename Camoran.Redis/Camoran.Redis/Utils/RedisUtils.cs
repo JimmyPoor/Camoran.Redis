@@ -227,31 +227,31 @@ namespace Camoran.Redis.Utils
 
     public class RedisList
     {
-        public string Lpop(string key) => RedisBoss.GetDB().ListLeftPop(key);
+        private IDatabase _db;
 
-        public long Lpush(string key, string val) => RedisBoss.GetDB().ListLeftPush(key, val);
+        public RedisList(int db = -1)
+        {
+            _db = RedisBoss.GetDB(db);
+        }
 
-        public string Rpop(string key) => RedisBoss.GetDB().ListRightPop(key);
+        public string Lpop(string key) => _db.ListLeftPop(key);
 
-        public long Rpush(string key, string val) => RedisBoss.GetDB().ListRightPush(key, val);
+        public long Lpush(string key, string val) => _db.ListLeftPush(key, val);
+
+        public string Rpop(string key) => _db.ListRightPop(key);
+
+        public long Rpush(string key, string val) => _db.ListRightPush(key, val);
 
         public long Llen(string key) => RedisBoss.GetDB().ListLength(key);
 
-        public List<string> Lrange(string key, int start, int stop) => RedisBoss.GetDB().ListRange(key, start, stop).ConvertToStringList();
+        public List<string> Lrange(string key, int start, int stop) => _db.ListRange(key, start, stop).ConvertToStringList();
 
-        public long Linsert(string key, string preVal, string val) => RedisBoss.GetDB().ListInsertAfter(key, preVal, val);
+        public long Linsert(string key, string preVal, string val) => _db.ListInsertAfter(key, preVal, val);
 
-        public string Lindex(string key, int index) => RedisBoss.GetDB().ListGetByIndex(key, index);
+        public string Lindex(string key, int index) => _db.ListGetByIndex(key, index);
 
-        /// <summary>
-        /// Remove val in list
-        /// </summary>
-        /// <param name="key">key</param>
-        /// <param name="val">val</param>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        public long Lremove(string key, string val, int count) => RedisBoss.GetDB().ListRemove(key, val, count);
-    }
+        public long Lrem(string key, string val, int count) => _db.ListRemove(key, val, count);
+    }   
 
 
     public class RedisSet
@@ -322,7 +322,7 @@ namespace Camoran.Redis.Utils
             if (!GetLock(currentStamp)) // try to get lock
             {
                 var timestamp = Convert.ToInt64(_redisString.Get(_lockKey));
-                if (timestamp <= currentStamp) // lock has been expired
+                if (timestamp <= currentStamp) // if lock has been expired
                 {
                     var oldStamp = Convert.ToInt64(_redisString.GetSet(_lockKey, currentStamp)); // get old timestamp to check whether another thread may get this lock
 
