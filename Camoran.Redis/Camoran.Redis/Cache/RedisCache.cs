@@ -7,7 +7,7 @@ namespace Camoran.Redis.Cache
 
     public interface ICahceStrategy<Key, Value>
     {
-        void Set(Key key, Value val, TimeSpan expireTime);
+        void Set(Key key, Value val, TimeSpan? expireTime);
         Value Get(Key key);
         bool Remove(Key key);
         void SetExpire(Key key, TimeSpan expireTime);

@@ -2960,7 +2960,8 @@
         "dependencies": {
           "NETStandard.Library": "1.6.1",
           "Newtonsoft.Json": "10.0.3",
-          "StackExchange.Redis": "1.2.6"
+          "StackExchange.Redis": "1.2.6",
+          "System.Threading.ThreadPool": "4.3.0"
         }
       }
     }

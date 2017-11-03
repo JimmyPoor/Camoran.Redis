@@ -1,7 +1,9 @@
 ﻿using Camoran.Redis.Utils;
 using StackExchange.Redis;
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Camoran.Redis.Test
@@ -13,12 +15,14 @@ namespace Camoran.Redis.Test
         string defaultKey = "abc";
         string defaultValue = "bcd";
         TimeSpan defaultExpire = new TimeSpan(0, 0, 0, 0, 10);
+        TimeSpan longExpire = new TimeSpan(1, 0, 0, 0, 0);
         IDatabase _db;
         RedisKeys rk = new RedisKeys();
         RedisString rs = new RedisString();
         RedisHash hs = new RedisHash();
         RedisList rl = new RedisList();
         RedisSet rst = new RedisSet();
+        RedisSortedSet rss = new RedisSortedSet();
 
 
         public RedisUtils_Test()
@@ -216,7 +220,7 @@ namespace Camoran.Redis.Test
         public void Set_Add_Test()
         {
             rst.Sadd(defaultKey, defaultValue);
-            rst.Sadd(defaultKey,defaultValue);
+            rst.Sadd(defaultKey, defaultValue);
 
             var vals = rst.Smember(defaultKey);
             var count = rst.Scard(defaultKey);
@@ -227,7 +231,51 @@ namespace Camoran.Redis.Test
         [Fact]
         public void SMove_Test()
         {
-           //rst.Smove()
+            rst.Sadd(defaultKey, defaultValue);
+
+            var newKey = "newKey";
+            var newVal = "newVal";
+
+            var allVal = rst.Sadd(newKey, newVal);
+            var moveVal = rst.Smove(defaultKey, newKey, defaultValue);
+
+            var vals = rst.Smember(newKey);
+            var count = rst.Scard(newKey);
+
+            Assert.True(allVal && moveVal);
+            Assert.Equal(vals.Count, count);
+        }
+
+        [Fact]
+        public void SRemove_Test()
+        {
+            rst.Sadd(defaultKey, defaultValue);
+            var remVal = rst.Srem(defaultKey, defaultValue);
+            var vals = rst.Smember(defaultKey);
+            var count = rst.Scard(defaultKey);
+
+            Assert.True(remVal);
+            Assert.Equal(vals.Count, count);
+        }
+
+        [Fact]
+        public void SDiff_Test()
+        {
+            rst.Sadd(defaultKey, defaultValue);
+            rst.Sadd(defaultKey, "newVal3");
+            rst.Sadd(defaultKey, "newVal4");
+
+            var newKey = "xxx";
+
+            rst.Sadd(newKey, defaultValue);
+            rst.Sadd(newKey, "newVal1");
+            rst.Sadd(newKey, "newVal2");
+
+            var vals = rst.Sdiff(defaultKey, newKey);
+            var count = rst.Scard(defaultKey);
+
+            Assert.Equal(vals.Count, 2);
+            Assert.True(vals.Contains("newVal3") && vals.Contains("newVal4"));
         }
 
         #endregion
@@ -235,10 +283,122 @@ namespace Camoran.Redis.Test
 
         #region [ Redis SortSet ]
 
-        #endregion
+        [Fact]
+        public void Zadd_Test()
+        {
+            rss.Zadd("zzz", "user", 1);
+            rss.Zadd("zzz", "user", 2);
+            rss.Zadd("zzz", "user", 3);
+
+            var count = rss.Zcount("zzz");
+
+            Assert.Equal(count, 1);
+        }
+
+        [Fact]
+        public void ZRange_Test()
+        {
+            rss.Zadd("nick", "user1", 1);
+            rss.Zadd("nick", "user2", 2);
+            rss.Zadd("nick", "user3", 3);
+
+            var rs1 = rss.ZrangeByRank("nick", 0, -1);
+            var rs2 = rss.ZrangeByRank("nick", 0, 1);
+            var rs3 = rss.ZrangeByRank("nick", 0, 2);
+
+            Assert.Equal(rs1.Count, 3);
+            Assert.Equal(rs2.Count, 2);
+            Assert.Equal(rs1.Count, 3);
+        }
+
+        [Fact]
+        public void ZRem_Test()
+        {
+            rss.Zadd("rem", "user1", 1);
+            rss.Zadd("rem", "user2", 2);
+            rss.Zrem("rem", "user1");
+            var count = rss.Zcount("rem");
+            var score = rss.ZScore("rem", "user2");
+            Assert.Equal(count, 1);
+            Assert.Equal(score, 2);
+        }
+
+        [Fact]
+        public void ZRemRange_Test()
+        {
+            rss.Zadd("remRange", "user1", 1);
+            rss.Zadd("remRange", "user2", 2);
+            rss.Zadd("remRange", "user3", 3);
+            rss.Zadd("remRange", "user4", 4);
+
+            var removeCount = rss.ZremRangeByScore("remRange", 1, 1);
+            var removeAll = rss.ZremRangeByScore("remRange", 1, 3);
+            var score = rss.ZScore("remRange", "user4");
+
+            Assert.Equal(removeCount, 1);
+            Assert.Equal(removeAll, 2);
+            Assert.NotNull(score);
+            Assert.Equal(score, 4);
+        }
+
+        #endregion       
 
 
         #region [ Redis Lock ]
+
+        [Fact]
+        public void GetLock_With_Single_Thread_Test()
+        {
+            var rl = new RedisLock(rk, rs, defaultExpire); //test logic:expireDate is too small
+            var r1 = rl.GetLock();
+            var r2 = rl.GetLock();
+
+            Assert.True(r1 && r2);
+        }
+
+        [Fact]
+        public void GetLock_With_Multi_Threads_Test()
+        {
+            int threadCount = 100;
+            var rl = new RedisLock(rk, rs, defaultExpire);
+            var ls = new List<string>();
+            var count = 0;
+            rk.Del("lockObj");
+
+            while (count <= 30)
+            {
+                ThreadPool.QueueUserWorkItem(s =>
+                {
+                    if (rl.GetLock())
+                        ls.Add("got!");
+
+                    count++;
+                });
+                //Task.Run(new Action(() =>
+                //{
+                //    if (rl.GetLock())
+                //        ls.Add("got!");
+
+                //    count++;
+                //}));
+
+                Thread.Sleep(100);
+            }
+            //for (int i = 0; i < threadCount; i++)
+            //{
+            //    new Thread(() =>
+            //    {
+            //        if (rl.GetLock())
+            //            ls.Add("got!");
+            //    }).Start();
+
+            //  ThreadPool.QueueUserWorkItem()
+
+            //   // Thread.Sleep(50);
+            //}
+
+            Assert.True(ls.Count > 0);
+        }
 
         #endregion
 

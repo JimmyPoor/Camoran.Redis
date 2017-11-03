@@ -52,6 +52,8 @@ namespace Camoran.Redis.Cache
         public RedisEncryptKeyStrategy(Encoding encoding, EncryptType entryptType = EncryptType.MD5)
             : base(encoding, entryptType)
         {
+            _redisString = new RedisString();
+            _redisKey = new RedisKeys();
         }
 
         public Value Get(string key)
@@ -61,22 +63,23 @@ namespace Camoran.Redis.Cache
             return _redisString.Get<Value>(enctryptKey);
         }
 
-        public void Set(string key, Value val, TimeSpan expireTime)
+        public void Set(string key, Value val, TimeSpan? expireTime=null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)
             {
                 var enctryptKey = MD5Encrypt(key);
 
-                _redisString.Set(key, val);
+                _redisString.Set(enctryptKey, val);
 
-                SetExpire(key, expireTime);
+                if (expireTime != null)
+                    SetExpire(key, expireTime.Value);
             }
         }
 
         public bool Remove(string key)
         {
-            return _redisKey.Del(key);
+            return _redisKey.Del(MD5Encrypt(key));
         }
 
         public void SetExpire(string key, TimeSpan expireTime)
@@ -105,7 +108,7 @@ namespace Camoran.Redis.Cache
             return _set.Smember(enctryptKey);
         }
 
-        public void Set(string key, List<string> val, TimeSpan expireTime)
+        public void Set(string key, List<string> val, TimeSpan? expireTime=null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)
@@ -113,15 +116,16 @@ namespace Camoran.Redis.Cache
                 var enctryptKey = MD5Encrypt(key);
 
                 foreach (var i in val)
-                    _set.Sadd(enctryptKey, i); // redis set will remove duplicate values
+                        _set.Sadd(enctryptKey, i); // redis set will remove duplicate values
 
-                SetExpire(key, expireTime);
+                if (expireTime != null)
+                    SetExpire(key, expireTime.Value);
             }
         }
 
         public bool Remove(string key)
         {
-            return _key.Del(key);
+            return _key.Del(MD5Encrypt(key));
         }
 
         public void SetExpire(string key, TimeSpan expireTime)
@@ -150,17 +154,19 @@ namespace Camoran.Redis.Cache
 
         public bool Remove(string key)
         {
-            return _key.Del(key);
+            return _key.Del(MD5Encrypt(key));
         }
 
-        public void Set(string key, Dictionary<string, string> val, TimeSpan expireTime)
+        public void Set(string key, Dictionary<string, string> val, TimeSpan? expireTime=null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)
             {
                 var enctryptKey = MD5Encrypt(key);
                 _hash.Hset(enctryptKey, val);
-                SetExpire(enctryptKey, expireTime);
+
+                if (expireTime != null)
+                    SetExpire(enctryptKey, expireTime.Value);
             }
         }
 

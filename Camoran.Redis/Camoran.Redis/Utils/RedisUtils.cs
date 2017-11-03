@@ -150,9 +150,7 @@ namespace Camoran.Redis.Utils
 
         public bool SetNx(string key, string val)
         {
-            if (_db.KeyExists(key)) return false;
-
-            return Set(key, val);
+            return _db.StringSet(key,val,null,When.NotExists);
         }
 
         public T Get<T>(string key)
@@ -251,51 +249,65 @@ namespace Camoran.Redis.Utils
         public string Lindex(string key, int index) => _db.ListGetByIndex(key, index);
 
         public long Lrem(string key, string val, int count) => _db.ListRemove(key, val, count);
-    }   
+    }
 
 
     public class RedisSet
     {
-        public bool Sadd(string key, string val) => RedisBoss.GetDB().SetAdd(key, val);
+        private IDatabase _db;
 
-        public long Scard(string key) => RedisBoss.GetDB().SetLength(key);
+        public RedisSet(int db = -1)
+        {
+            _db = RedisBoss.GetDB(db);
+        }
 
-        public string Spop(string key) => RedisBoss.GetDB().SetPop(key);
+        public bool Sadd(string key, string val) => _db.SetAdd(key, val);
 
-        public bool Smove(string sourceKey, string destKey, string val) => RedisBoss.GetDB().SetMove(sourceKey, destKey, val);
+        public long Scard(string key) => _db.SetLength(key);
 
-        public bool Srem(string key, string val) => RedisBoss.GetDB().SetRemove(key, val);
+        public string Spop(string key) => _db.SetPop(key);
 
-        public List<string> Smember(string key) => RedisBoss.GetDB().SetMembers(key).ConvertToStringList();
+        public bool Smove(string sourceKey, string destKey, string val) => _db.SetMove(sourceKey, destKey, val);
+
+        public bool Srem(string key, string val) => _db.SetRemove(key, val);
+
+        public List<string> Smember(string key) => _db.SetMembers(key).ConvertToStringList();
 
         public List<string> Sdiff(string first, string second) =>
-             RedisBoss.GetDB().SetCombine(SetOperation.Difference, first, second).ConvertToStringList();
+             _db.SetCombine(SetOperation.Difference, first, second).ConvertToStringList();
 
         public List<string> Sunion(string first, string second) =>
-            RedisBoss.GetDB().SetCombine(SetOperation.Union, first, second).ConvertToStringList();
+            _db.SetCombine(SetOperation.Union, first, second).ConvertToStringList();
 
         public List<string> Sinter(string first, string second) =>
-            RedisBoss.GetDB().SetCombine(SetOperation.Intersect, first, second).ConvertToStringList();
+            _db.SetCombine(SetOperation.Intersect, first, second).ConvertToStringList();
     }
 
 
     public class RedisSortedSet
     {
-        public bool Zadd(string key, string val, double score) => RedisBoss.GetDB().SortedSetAdd(key, val, score);
+        private IDatabase _db;
+
+        public RedisSortedSet(int db = -1)
+        {
+            _db = RedisBoss.GetDB(db);
+        }
+
+        public bool Zadd(string key, string val, double score) => _db.SortedSetAdd(key, val, score);
 
         public long Zcount(string key) => RedisBoss.GetDB().SortedSetLength(key);
 
-        public List<string> ZrangeByScore(string key, long start, long end = -1) => RedisBoss.GetDB().SortedSetRangeByScore(key, start, end).ConvertToStringList();
+        public List<string> ZrangeByScore(string key, long start, long end = -1) => _db.SortedSetRangeByScore(key, start, end).ConvertToStringList();
 
-        public List<string> ZrangeByRank(string key, long start, long end) => RedisBoss.GetDB().SortedSetRangeByRank(key, start, end).ConvertToStringList();
+        public List<string> ZrangeByRank(string key, long start, long end) => _db.SortedSetRangeByRank(key, start, end).ConvertToStringList();
 
         public bool Zrem(string key, string val) => RedisBoss.GetDB().SortedSetRemove(key, val);
 
-        public long ZremRangeByRank(string key, long start, long end) => RedisBoss.GetDB().SortedSetRemoveRangeByRank(key, start, end);
+        public long ZremRangeByRank(string key, long start, long end) => _db.SortedSetRemoveRangeByRank(key, start, end);
 
-        public long ZremRangeByScore(string key, long start, long end) => RedisBoss.GetDB().SortedSetRemoveRangeByScore(key, start, end);
+        public long ZremRangeByScore(string key, long start, long end) => _db.SortedSetRemoveRangeByScore(key, start, end);
 
-        public void ZScore(string key, string val) => RedisBoss.GetDB().SortedSetScore(key, val);
+        public double? ZScore(string key, string val) => _db.SortedSetScore(key, val);
     }
 
 
@@ -318,13 +330,14 @@ namespace Camoran.Redis.Utils
 
         public bool GetLock()
         {
-            var currentStamp = ConvertToTimestamp(DateTime.Now + _lockExpireTime);
-            if (!GetLock(currentStamp)) // try to get lock
+            var nextStamp = ConvertToTimestamp(DateTime.Now + _lockExpireTime);
+            var currentStamp = ConvertToTimestamp(DateTime.Now);
+            if (!GetLock(nextStamp)) // try to get lock
             {
                 var timestamp = Convert.ToInt64(_redisString.Get(_lockKey));
-                if (timestamp <= currentStamp) // if lock has been expired
+                if (currentStamp > timestamp) // if lock has been expired
                 {
-                    var oldStamp = Convert.ToInt64(_redisString.GetSet(_lockKey, currentStamp)); // get old timestamp to check whether another thread may get this lock
+                    var oldStamp = Convert.ToInt64(_redisString.GetSet(_lockKey, nextStamp)); // get old timestamp to check whether another thread may get this lock
 
                     return oldStamp == timestamp || oldStamp == 0; // if no another thread got lock then current thread got this lock instead,oldStamp is zero mean  lock key been deleted
                 }

@@ -5555,7 +5555,8 @@
     ".NETStandard,Version=v1.6": [
       "NETStandard.Library >= 1.6.1",
       "Newtonsoft.Json >= 10.0.3",
-      "StackExchange.Redis >= 1.2.6"
+      "StackExchange.Redis >= 1.2.6",
+      "System.Threading.ThreadPool >= 4.3.0"
     ]
   },
   "packageFolders": {
@@ -5581,6 +5582,10 @@
     "frameworks": {
       "netstandard1.6": {
         "dependencies": {
+          "System.Threading.ThreadPool": {
+            "target": "Package",
+            "version": "4.3.0"
+          },
           "StackExchange.Redis": {
             "target": "Package",
             "version": "1.2.6"
