@@ -3,6 +3,7 @@ using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+//using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -14,9 +15,8 @@ namespace Camoran.Redis.Test
         string conn = @"localhost";
         string defaultKey = "abc";
         string defaultValue = "bcd";
-        TimeSpan defaultExpire = new TimeSpan(0, 0, 0, 0, 10);
+        TimeSpan defaultExpire = new TimeSpan(0, 0, 0, 1, 10);
         TimeSpan longExpire = new TimeSpan(1, 0, 0, 0, 0);
-        IDatabase _db;
         RedisKeys rk = new RedisKeys();
         RedisString rs = new RedisString();
         RedisHash hs = new RedisHash();
@@ -27,7 +27,7 @@ namespace Camoran.Redis.Test
 
         public RedisUtils_Test()
         {
-            _db = RedisBoss.GetDB();
+            RedisBoss.SetConnection(conn);
         }
 
         [Fact]
@@ -266,7 +266,6 @@ namespace Camoran.Redis.Test
             rst.Sadd(defaultKey, "newVal4");
 
             var newKey = "xxx";
-
             rst.Sadd(newKey, defaultValue);
             rst.Sadd(newKey, "newVal1");
             rst.Sadd(newKey, "newVal2");
@@ -359,10 +358,11 @@ namespace Camoran.Redis.Test
         [Fact]
         public void GetLock_With_Multi_Threads_Test()
         {
-            int threadCount = 100;
+            int threadCount = 10;
             var rl = new RedisLock(rk, rs, defaultExpire);
             var ls = new List<string>();
-            var count = 0;
+             var count = 0;
+
             rk.Del("lockObj");
 
             while (count <= 30)
@@ -382,7 +382,7 @@ namespace Camoran.Redis.Test
                 //    count++;
                 //}));
 
-                Thread.Sleep(100);
+                Thread.Sleep(10);
             }
             //for (int i = 0; i < threadCount; i++)
             //{
@@ -392,10 +392,10 @@ namespace Camoran.Redis.Test
             //            ls.Add("got!");
             //    }).Start();
 
-            //  ThreadPool.QueueUserWorkItem()
-
-            //   // Thread.Sleep(50);
+            //    Thread.Sleep(5);
             //}
+
+            Thread.Sleep(10000);
 
             Assert.True(ls.Count > 0);
         }

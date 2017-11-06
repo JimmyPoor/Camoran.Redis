@@ -1,12 +1,12 @@
 ﻿using Camoran.Redis.Cache;
 using System;
 using System.Collections.Generic;
-using System.Text;
-using Xunit;
 using System.Linq;
+using System.Text;
 using System.Threading;
+using Xunit;
 
-namespace Camoran.Redis.Test.Cache
+namespace Camoran.Redis.Test
 {
 
     public class RedisCache_Test
@@ -75,14 +75,11 @@ namespace Camoran.Redis.Test.Cache
         {
             var dic = defaultValues.ToDictionary(x => x, y => y);
             _rekwh.Set(defaultKey, dic, _defaultTimeSpan);
-
             Thread.Sleep(1000);
+            var rs = _rekwh.Get(defaultKey);
 
-            Assert.Equal(dic.Count, defaultValues.Count);
+            Assert.Null(rs);
         }
-
-
-
 
     }
 
