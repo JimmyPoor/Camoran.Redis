@@ -69,7 +69,6 @@ namespace Camoran.Redis.Test
             Assert.Equal(vals.Count, defaultValues.Count);
         }
 
-
         [Fact]
         public void RedisEncryptHashValueStrategy_Key_Expire_Test()
         {

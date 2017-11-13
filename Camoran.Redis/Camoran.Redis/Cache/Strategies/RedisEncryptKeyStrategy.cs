@@ -36,7 +36,6 @@ namespace Camoran.Redis.Cache
             throw new RedisCacheException();
         }
 
-
         public enum EncryptType
         {
             MD5 = 1
@@ -44,8 +43,9 @@ namespace Camoran.Redis.Cache
     }
 
 
-    public class RedisEncryptKeyStrategy<Value> : RedisEncrypt, ICahceStrategy<string, Value>
+    public class RedisEncryptKeyStrategy<Value> : RedisEncrypt, IRedisCahceStrategy<string, Value>
     {
+
         RedisString _redisString;
         RedisKeys _redisKey;
 
@@ -63,7 +63,7 @@ namespace Camoran.Redis.Cache
             return _redisString.Get<Value>(enctryptKey);
         }
 
-        public void Set(string key, Value val, TimeSpan? expireTime=null)
+        public void Set(string key, Value val, TimeSpan? expireTime = null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)
@@ -86,11 +86,19 @@ namespace Camoran.Redis.Cache
         {
             _redisKey.Expire(key, expireTime);
         }
+
+        public void SetConnection(string conn)
+        {
+            if (!string.IsNullOrEmpty(conn))
+                RedisBoss.SetConnection(conn);
+        }
+
     }
 
 
-    public class RedisEncryptKeyWithSetStrategy : RedisEncrypt, ICahceStrategy<string, List<string>>
+    public class RedisEncryptKeyWithSetStrategy : RedisEncrypt, IRedisCahceStrategy<string, List<string>>
     {
+
         RedisSet _set;
         RedisKeys _key;
 
@@ -108,7 +116,7 @@ namespace Camoran.Redis.Cache
             return _set.Smember(enctryptKey);
         }
 
-        public void Set(string key, List<string> val, TimeSpan? expireTime=null)
+        public void Set(string key, List<string> val, TimeSpan? expireTime = null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)
@@ -116,7 +124,7 @@ namespace Camoran.Redis.Cache
                 var enctryptKey = MD5Encrypt(key);
 
                 foreach (var i in val)
-                        _set.Sadd(enctryptKey, i); // redis set will remove duplicate values
+                    _set.Sadd(enctryptKey, i); // redis set will remove duplicate values
 
                 if (expireTime != null)
                     SetExpire(key, expireTime.Value);
@@ -133,11 +141,18 @@ namespace Camoran.Redis.Cache
             _key.Expire(key, expireTime);
         }
 
+        public void SetConnection(string conn)
+        {
+            if (!string.IsNullOrEmpty(conn))
+                RedisBoss.SetConnection(conn);
+        }
+
     }
 
 
-    public class RedisEncryptKeyWithHashStrategy : RedisEncrypt, ICahceStrategy<string, Dictionary<string, string>>
+    public class RedisEncryptKeyWithHashStrategy : RedisEncrypt, IRedisCahceStrategy<string, Dictionary<string, string>>
     {
+
         RedisHash _hash;
         RedisKeys _key;
 
@@ -151,13 +166,12 @@ namespace Camoran.Redis.Cache
         public Dictionary<string, string> Get(string key)
             => _hash.HGetAll(MD5Encrypt(key));
 
-
         public bool Remove(string key)
         {
             return _key.Del(MD5Encrypt(key));
         }
 
-        public void Set(string key, Dictionary<string, string> val, TimeSpan? expireTime=null)
+        public void Set(string key, Dictionary<string, string> val, TimeSpan? expireTime = null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)
@@ -172,6 +186,13 @@ namespace Camoran.Redis.Cache
 
         public void SetExpire(string key, TimeSpan expireTime)
             => _key.Expire(key, expireTime);
+
+        public void SetConnection(string conn)
+        {
+            if (!string.IsNullOrEmpty(conn))
+                RedisBoss.SetConnection(conn);
+        }
+
     }
 
 }
