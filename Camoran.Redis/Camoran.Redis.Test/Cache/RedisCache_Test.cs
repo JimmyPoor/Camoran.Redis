@@ -12,18 +12,18 @@ namespace Camoran.Redis.Test
     public class RedisCache_Test
     {
 
-        RedisEncryptKeyWithSetStrategy _rekwss = new RedisEncryptKeyWithSetStrategy(Encoding.UTF8);
-        RedisEncryptKeyStrategy<List<string>> _reks = new RedisEncryptKeyStrategy<List<string>>(Encoding.UTF8);
-        RedisEncryptKeyWithHashStrategy _rekwh = new RedisEncryptKeyWithHashStrategy((Encoding.UTF8));
-        List<string> defaultValues = new List<string>();
+        RedisEncryptKeyWithSetStrategy<CacheDemo> _rekwss = new RedisEncryptKeyWithSetStrategy<CacheDemo>(Encoding.UTF8);
+        RedisEncryptKeyStrategy<List<CacheDemo>> _reks = new RedisEncryptKeyStrategy<List<CacheDemo>>(Encoding.UTF8);
+        RedisEncryptKeyWithHashStrategy<CacheDemo> _rekwh = new RedisEncryptKeyWithHashStrategy<CacheDemo>((Encoding.UTF8));
+        List<CacheDemo> defaultValues = new List<CacheDemo>();
         string defaultKey = "defaultKey";
         TimeSpan _defaultTimeSpan = new TimeSpan(0,0,0,0,1);
 
         public RedisCache_Test()
         {
-            defaultValues.Add("val1");
-            defaultValues.Add("val2");
-            defaultValues.Add("val3");
+            defaultValues.Add(new CacheDemo { Version = "No1" });
+            defaultValues.Add(new CacheDemo { Version = "No2" });
+            defaultValues.Add(new CacheDemo { Version = "No3" });
         }
 
 
@@ -62,7 +62,7 @@ namespace Camoran.Redis.Test
         [Fact]
         public void RedisEncryptHashValueStrategy_Set_Get_Test()
         {
-            var dic = defaultValues.ToDictionary(x => x, y => y);
+            var dic = defaultValues.ToDictionary(x => x.Version, y => y);
             _rekwh.Set(defaultKey, dic);
             var vals = _rekwh.Get(defaultKey);
 
@@ -72,12 +72,18 @@ namespace Camoran.Redis.Test
         [Fact]
         public void RedisEncryptHashValueStrategy_Key_Expire_Test()
         {
-            var dic = defaultValues.ToDictionary(x => x, y => y);
+            var dic = defaultValues.ToDictionary(x => x.Version, y => y);
             _rekwh.Set(defaultKey, dic, _defaultTimeSpan);
             Thread.Sleep(1000);
             var rs = _rekwh.Get(defaultKey);
 
             Assert.Null(rs);
+        }
+
+
+        class CacheDemo
+        {
+            public string Version { get; set; }
         }
 
     }

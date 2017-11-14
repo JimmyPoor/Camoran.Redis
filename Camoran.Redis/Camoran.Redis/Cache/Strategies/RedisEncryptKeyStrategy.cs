@@ -96,7 +96,7 @@ namespace Camoran.Redis.Cache
     }
 
 
-    public class RedisEncryptKeyWithSetStrategy : RedisEncrypt, IRedisCahceStrategy<string, List<string>>
+    public class RedisEncryptKeyWithSetStrategy<Value> : RedisEncrypt, IRedisCahceStrategy<string, List<Value>>
     {
 
         RedisSet _set;
@@ -109,14 +109,14 @@ namespace Camoran.Redis.Cache
             _key = new RedisKeys();
         }
 
-        public List<string> Get(string key)
+        public List<Value> Get(string key)
         {
             var enctryptKey = MD5Encrypt(key);
 
-            return _set.Smember(enctryptKey);
+            return _set.Smember<Value>(enctryptKey);
         }
 
-        public void Set(string key, List<string> val, TimeSpan? expireTime = null)
+        public void Set(string key, List<Value> val, TimeSpan? expireTime = null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)
@@ -150,7 +150,7 @@ namespace Camoran.Redis.Cache
     }
 
 
-    public class RedisEncryptKeyWithHashStrategy : RedisEncrypt, IRedisCahceStrategy<string, Dictionary<string, string>>
+    public class RedisEncryptKeyWithHashStrategy<Value> : RedisEncrypt, IRedisCahceStrategy<string, Dictionary<string, Value>>
     {
 
         RedisHash _hash;
@@ -163,15 +163,15 @@ namespace Camoran.Redis.Cache
             _key = new RedisKeys();
         }
 
-        public Dictionary<string, string> Get(string key)
-            => _hash.HGetAll(MD5Encrypt(key));
+        public Dictionary<string, Value> Get(string key)
+            => _hash.HGet<Value>(MD5Encrypt(key));
 
         public bool Remove(string key)
         {
             return _key.Del(MD5Encrypt(key));
         }
 
-        public void Set(string key, Dictionary<string, string> val, TimeSpan? expireTime = null)
+        public void Set(string key, Dictionary<string, Value> val, TimeSpan? expireTime = null)
         {
             if (val == null) return;
             if (_entryptType == EncryptType.MD5)

@@ -82,7 +82,7 @@ namespace Camoran.Redis.Test
         [Fact]
         public void Redis_Key_Increment_Test()
         {
-            var intValue="1";
+            var intValue = "1";
             rs.Set(defaultKey, intValue);
 
             var current = rk.Increment(defaultKey, 10);
@@ -158,21 +158,37 @@ namespace Camoran.Redis.Test
         [Fact]
         public void List_Push_Pop_Test()
         {
-            var newKey = "newKey";
-            var newValue = "newValue";
+            var newKey = "a";
+            var newValue = "b";
             var pushVal = rl.Lpush(newKey, newValue);
-            var popVal = rl.Lpop(defaultKey);
+            var popVal = rl.Lpop<string>(newKey);
 
             var temp = "temp";
             for (int i = 0; i <= 10; i++)
                 rl.Rpush(temp, i.ToString());
 
-            var rpopVal = rl.Rpop(temp);
+            var rpopVal = rl.Rpop<string>(temp);
 
-           // Assert.Null(val);
             Assert.True(pushVal > 0);
-            Assert.Equal(popVal, defaultValue);
+            Assert.Equal(popVal, newValue);
             Assert.Equal(rpopVal, "10");
+        }
+
+        [Fact]
+        public void List_Push_Pop_With_Diff_Type_Test()
+        {
+            var newKey = "newType";
+            var pushVal = rl.Lpush(newKey, 11112222);
+            var pushVal2 = rl.Lpush(newKey, new Demo { Val = "2" });
+
+            //will throw exception due to the wrong type for demo
+            Assert.Throws(typeof(Newtonsoft.Json.JsonReaderException), ()=> rl.Lrange<string>(newKey,0,-1));
+
+            var lpopVal = rl.Lpop<object>(newKey);
+            var rpopVal = rl.Rpop<object>(newKey);
+
+            Assert.True(pushVal > 0 & pushVal2 > 0);
+            Assert.NotEqual(lpopVal, rpopVal);
         }
 
         [Fact]
@@ -187,8 +203,8 @@ namespace Camoran.Redis.Test
             for (int i = start; i <= end; i++)
                 rl.Rpush(key, i.ToString());
 
-            var all = rl.Lrange(key, 0, -1);
-            var range = rl.Lrange(key, 0, 2);
+            var all = rl.Lrange<string>(key, 0, -1);
+            var range = rl.Lrange<string>(key, 0, 2);
 
             Assert.Equal(all.Count, end + 1);
             Assert.Equal(range.Count, 3);
@@ -223,28 +239,41 @@ namespace Camoran.Redis.Test
             rst.Sadd(defaultKey, defaultValue);
             rst.Sadd(defaultKey, defaultValue);
 
-            var vals = rst.Smember(defaultKey);
+            var vals = rst.Smember<string>(defaultKey);
             var count = rst.Scard(defaultKey);
 
+            var newkey = "newType";
+            rst.Sadd(newkey, 2);
+            rst.Sadd(newkey, '2');
+            rst.Sadd(newkey, new Demo { Val = "2" });
+
+            var memebers = rst.Smember<object>(newkey);
+
+            Assert.Equal(vals[1], defaultValue);
             Assert.Equal(vals.Count, count);
+            Assert.Equal(memebers.Count, rst.Scard(newkey));
+            Assert.Throws(typeof(Newtonsoft.Json.JsonReaderException), () =>
+            {
+                rst.Smember<string>(newkey);
+            });
         }
 
         [Fact]
         public void SMove_Test()
         {
-            rst.Srem(defaultKey, defaultValue);
-            rst.Sadd(defaultKey, defaultValue);
-
             var newKey = "newKey";
             var newVal = "newVal";
+            var originKey = "oKey";
+            var oVal = "oval";
 
-            var allVal = rst.Sadd(newKey, newVal);
-            var moveVal = rst.Smove(defaultKey, newKey, defaultValue);
+            rst.Sadd(newKey, newVal);
+            rst.Sadd(originKey, oVal);
+            rst.Smove(originKey, newKey, oVal);
 
-            var vals = rst.Smember(newKey);
+            var vals = rst.Smember<object>(newKey);
             var count = rst.Scard(newKey);
 
-            Assert.True(allVal && moveVal);
+            //Assert.True(allVal && moveVal);
             Assert.Equal(vals.Count, count);
         }
 
@@ -254,7 +283,7 @@ namespace Camoran.Redis.Test
             //rst.Srem(defaultKey, defaultValue);
             rst.Sadd(defaultKey, defaultValue);
             var remVal = rst.Srem(defaultKey, defaultValue);
-            var vals = rst.Smember(defaultKey);
+            var vals = rst.Smember<string>(defaultKey);
             var count = rst.Scard(defaultKey);
 
             Assert.True(remVal);
@@ -264,17 +293,12 @@ namespace Camoran.Redis.Test
         [Fact]
         public void SDiff_Test()
         {
-            rst.Srem(defaultKey, defaultValue);
-            rst.Sadd(defaultKey, defaultValue);
-            rst.Sadd(defaultKey, "newVal3");
-            rst.Sadd(defaultKey, "newVal4");
+            var newKey = "newkey";
 
-            var newKey = "xxx";
-            rst.Sadd(newKey, defaultValue);
-            rst.Sadd(newKey, "newVal1");
-            rst.Sadd(newKey, "newVal2");
+            rst.Sadd(newKey, new Demo { Val = "newVal3" });
+            rst.Sadd(newKey, "aa");
 
-            var vals = rst.Sdiff(defaultKey, newKey);
+            var vals = rst.Sdiff<object>(defaultKey, newKey);
             var count = rst.Scard(defaultKey);
 
             Assert.Equal(vals.Count, 2);
@@ -305,9 +329,9 @@ namespace Camoran.Redis.Test
             rss.Zadd("nick", "user2", 2);
             rss.Zadd("nick", "user3", 3);
 
-            var rs1 = rss.ZrangeByRank("nick", 0, -1);
-            var rs2 = rss.ZrangeByRank("nick", 0, 1);
-            var rs3 = rss.ZrangeByRank("nick", 0, 2);
+            var rs1 = rss.ZrangeByRank<string>("nick", 0, -1);
+            var rs2 = rss.ZrangeByRank<string>("nick", 0, 1);
+            var rs3 = rss.ZrangeByRank<string>("nick", 0, 2);
 
             Assert.Equal(rs1.Count, 3);
             Assert.Equal(rs2.Count, 2);
@@ -365,7 +389,7 @@ namespace Camoran.Redis.Test
             int threadCount = 10;
             var rl = new RedisLock(rk, rs, defaultExpire);
             var ls = new List<string>();
-             var count = 0;
+            var count = 0;
 
             rk.Del("lockObj");
 
